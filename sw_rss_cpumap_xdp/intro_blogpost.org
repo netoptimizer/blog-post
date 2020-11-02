@@ -30,9 +30,10 @@ and have limited scalability and performance.
 The performance problem is because RPS and RFS, happens too late in the
 kernels receive path, most importantly after the allocation of the "SKB"
 metadata kernel object that keeps track of the packet. Transferring and
-queuing this object to a remote CPU is also a cross-CPU scalability
-bottleneck.  (Details: The kernels slab memory allocator is also challenged
-as the per-CPU slab caches loose their effect).
+queuing these SKB-objects to a remote CPU is also a cross-CPU scalability
+bottleneck. That involves Inter Processor Communication calls and moving
+cache-lines between CPU. (Details: The kernels slab memory allocator is also
+challenged as the per-CPU slab caches loose their effect).
 
 * Faster software receive steering with XDP
 
