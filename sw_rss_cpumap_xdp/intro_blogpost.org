@@ -54,4 +54,19 @@ The actions are:
  3) XDP_TX - Bounce packet out same interface.
  4) XDP_REDIRECT - the advanced action this blogpost focus on.
 
+** The special XDP_REDIRECT
+
+The XDP_REDIRECT action is different, because it can queue XDP frame
+(xdp_frame) objects into a BPF-map. All the other actions need to take
+immediate action, because the (xdp_buff) data-structure that keeps track
+packet-data is not-allocated anywhere, it is simply a variable in the
+function call itself.
+
+It is essential for performance to avoid per-packet allocations. When
+XDP-redirecting the xdp_buff object is converted into a xdp_frame object to
+allow queuing this object. To avoid any memory allocations, the xdp_frame
+object is placed in the top headroom of the data-packet itself.
+
+
+
 
