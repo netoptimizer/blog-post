@@ -3,15 +3,54 @@
 Abbreviations:
 - RSS = receive side scaling
 - RPS = Receive Packet Steering
+- XDP = eXpress Data Path
 
 * Introduction
 
 Modern Network Interface Cards (NIC) scale by having a hardware feature,
 named Receive Side Scaling (RSS), that based on a flow-hash spread incoming
 traffic across the RX irq-lines, which can be handled by different CPUs.
-
 Unfortunately there can be a number of situations where the NIC hardware RSS
-features fail, which result in delivering all packets to same RX IRQ-line and
-thus same CPU. This blogpost is about how to handle this situation in software,
-when RSS fail.
+features fail, which result in delivering all packets to same RX IRQ-line
+and thus same CPU.
+
+This blogpost is about how to handle this situation in software, when RSS
+fails, with a strong focus on how to solve this *using XDP and CPU-map*
+redirect feature.
+
+* Existing software receive steering
+
+The Linux kernel already have a software feature called Receive Packet
+Steering (RPS) and Receive Flow Steering (RFS), which is logically a
+software implementation of RSS. This feature is both hard to configure ([1])
+and have limited scalability and performance.
+
+[1] https://www.kernel.org/doc/html/latest/networking/scaling.html
+
+The performance problem is because RPS and RFS, happens too late in the
+kernels receive path, most importantly after the allocation of the "SKB"
+metadata kernel object that keeps track of the packet. Transferring and
+queuing this object to a remote CPU is also a cross-CPU scalability
+bottleneck.  (Details: The kernels slab memory allocator is also challenged
+as the per-CPU slab caches loose their effect).
+
+* Faster software receive steering with XDP
+
+A faster and more scaleable software solution is using XDP to redirect
+raw-frames into a CPU-map. XDP is a kernel layer before the normal network
+stack. This means it runs before allocating the mentioned SKB object, and
+generally avoiding any per-packet memory allocations.
+
+* What XDP actions
+
+XDP is an eBPF-program that run at the earliest possible point in the driver
+receive-path when DMA rx-ring is synced for the CPU.
+
+This eBPF-program parse the received frames and returns a verdict or action.
+The actions are:
+ 1) XDP_DROP - drop frame, which at driver level means reuse without alloc.
+ 2) XDP_PASS - let it pass for normal network stack handling.
+ 3) XDP_TX - Bounce packet out same interface.
+ 4) XDP_REDIRECT - the advanced action this blogpost focus on.
+
 
