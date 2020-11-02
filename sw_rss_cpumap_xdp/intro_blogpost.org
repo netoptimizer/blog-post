@@ -94,9 +94,23 @@ and value. As of this writing there are 28 different map types[2].
 
 [2] https://elixir.bootlin.com/linux/v5.10-rc2/source/include/uapi/linux/bpf.h#L130
 
-For our use-case of software CPU receive steering, the CPUMAP type
-(BPF_MAP_TYPE_CPUMAP) is what we need. The CPUMAP represent the CPUs in the
-system (zero) indexed as the map-key, and the map-value is the config
-settings (for this CPU). (Hint: more about how we extended the map-value for
-adding new features later in blogpost).
+For our use-case of software Receive Side Scaling (RSS) with XDP, the CPUMAP
+type (BPF_MAP_TYPE_CPUMAP) is just what we need. The CPUMAP represents the
+CPUs in the system (zero) indexed as the map-key, and the map-value is the
+config settings (for this CPU). (Hint: more about how we extended the
+map-value for adding new features later in blogpost).
+
+We promised a faster solution with XDP, which is only possible due to the
+careful design and bulking details happening internally in CPUMAP.
+
+Each CPUMAP entry has a dedicated kernel thread bound to the given CPU in
+order to represent the remote-CPU execution unit. The CPUMAP entry
+represents a Multi-Producer Single-Consumer (MPSC) queue (implemented via
+kernel provided ptr_ring). The Single-Consumer is the kthread that can
+access the (ptr_ring) queue lockless. It also tries to bulk dequeue 8
+xdp-frame objects as this represent one cache-line. The Multi-Producers can
+be simultaneous RX IRQ-line CPUs queuing up packets for the remote-CPU. To
+avoid queue lock-contention there is (per map-entry) a small 8 object
+per-CPU allocated store for producer CPUs to generate bulk enqueue into the
+cross-CPU queue.
 
