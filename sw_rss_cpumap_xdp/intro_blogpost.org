@@ -1,0 +1,17 @@
+#+Title: New introduction to blogpost
+
+Abbreviations:
+- RSS = receive side scaling
+- RPS = Receive Packet Steering
+
+* Introduction
+
+Modern Network Interface Cards (NIC) scale by having a hardware feature,
+named Receive Side Scaling (RSS), that based on a flow-hash spread incoming
+traffic across the RX irq-lines, which can be handled by different CPUs.
+
+Unfortunately there can be a number of situations where the NIC hardware RSS
+features fail, which result in delivering all packets to same RX IRQ-line and
+thus same CPU. This blogpost is about how to handle this situation in software,
+when RSS fail.
+
